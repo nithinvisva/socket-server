@@ -36,7 +36,7 @@ io.on('connection', (socket) => {
     socketId.X = null;
     socketId.Y = null;
     xCount = 0;
-    oCount=0;
+    oCount=0; 
   });
 });
 
