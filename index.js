@@ -35,6 +35,8 @@ io.on('connection', (socket) => {
     console.log('a user disconnected!');
     socketId.X = null;
     socketId.Y = null;
+    xCount = 0;
+    oCount=0;
   });
 });
 
