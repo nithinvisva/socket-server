@@ -9,6 +9,10 @@ let socketId = { X: null, Y: null }
 let xCount = 0;
 let oCount = 0;
 
+app.get("/", (req, res) => {
+  res.send({ message: "Hello World!" })
+})
+
 io.on('connection', (socket) => {
   console.log('a user connected');
   socket.on('message', (data) => {
