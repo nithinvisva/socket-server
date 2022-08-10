@@ -3,11 +3,11 @@ const httpServer = require('http').createServer(app);
 const io = require('socket.io')(httpServer, {
   cors: { origin: '*' }
 });
+const _ = require('lodash')
 
 const port = process.env.PORT || 3000;
-let socketId = { X: null, Y: null }
-let xCount = 0;
-let oCount = 0;
+let users=[]
+let rooms=[]
 
 app.get("/", (req, res) => {
   res.send({ message: "Hello World!" })
@@ -16,32 +16,98 @@ app.get("/", (req, res) => {
 io.on('connection', (socket) => {
   console.log('a user connected');
   socket.on('message', (data) => {
-    data.userId = socket.id
-    if (!socketId.X) {
-      socketId.X =  data.userId
-    }else if(socketId.X != data.userId && !socketId.Y){
-      socketId.Y =  data.userId
-    }
-    console.log(`xid ${socketId.X} , x ${xCount}, y ${oCount}`)
-    if (socketId.X == data.userId && xCount == oCount) {
+    const room =rooms.filter((user)=>{
+      if(user.X == socket.id || user.Y == socket.id){
+        return user
+      }
+    })[0]
+    if (room?.X == socket.id && room.xCount == room.oCount) {
       data.value = 'X';
-      xCount++;
-      io.emit('message', data);
+      updateCount(data.value, socket.id)
+      io.to(room.roomName).emit('message', data);
     }
-    console.log(`xid ${socketId.Y} , x ${xCount}, y ${oCount}`)
-    if (socketId.Y == data.userId && xCount > oCount) {
+    if (room?.Y == socket.id && room.xCount > room.oCount) {
       data.value = 'O';
-      oCount++;
-      io.emit('message', data);
+      updateCount(data.value, socket.id)
+      io.to(room.roomName).emit('message', data);
     }
   });
+  socket.on('user',(data)=>{
+    if(!_.has(data,'isActive')){
+      const newUser={
+        userId: socket.id,
+        name: data.name,
+        isActive: true
+      }
+      users.push(newUser);
+      io.except(socket.id).emit('user', newUser);
+    }else{
+      const updatedData = users.filter((user)=>{
+        if(user.userId == socket.id){
+          user.isActive = false
+          return user
+        }
+      })
+      io.except(socket.id).emit('user', updatedData[0]);
+    }
+  })
+  socket.on('request-join',(data)=>{
+    const user= users.filter((user)=>{
+      if(user.userId == socket.id){
+        return user
+      }
+    })
+    const room= {X: socket.id, Y: data.userId, roomName: socket.id+data.userId, xCount:0,oCount:0}
+    rooms.push(room)
+    socket.join(room.roomName)
+    io.to(data.userId).emit('request-join',user[0])
+  })
+  socket.on('accepted-join',(data)=>{
+    const user= users.filter((user)=>{
+      if(user.userId == socket.id){
+        return user
+      }
+    })
+    const room = rooms.filter((user)=>{
+      if(user.X == socket.id || user.Y == socket.id){
+        return user
+      }
+    })
+    if(data.acceptance){
+      const acceptData = {
+        userId: user[0].userId,
+        name: user[0].name,
+        isActive: user[0].isActive,
+        accepted: true
+      }
+      socket.join(room[0].roomName)
+      io.to(data.userId).emit('accepted-join',acceptData)
+    }
+  })
+
   socket.on('disconnect', () => {
     console.log('a user disconnected!');
-    socketId.X = null;
-    socketId.Y = null;
-    xCount = 0;
-    oCount=0; 
+    rooms = rooms.filter((user)=>{
+      if(user.X != socket.id || user.Y != socket.id){
+        return user
+      }
+    })
   });
 });
+updateCount= (value,id)=>{
+if(value == 'X'){
+  rooms.map((room)=>{
+    if(room.X == id){
+      room.xCount++;
+    }
+  })
+}else{
+  rooms.map((room)=>{
+    if(room.Y == id){
+      room.oCount++;
+    }
+  })
+}
+}
 
 httpServer.listen(port, () => console.log(`listening on port ${port}`));
