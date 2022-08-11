@@ -84,6 +84,18 @@ io.on('connection', (socket) => {
       io.to(data.userId).emit('accepted-join',acceptData)
     }
   })
+  socket.on('room-deatils',async (data)=>{
+    const room = await rooms.filter((user)=>{
+      if(user.X == socket.id || user.Y == socket.id){
+        return user
+      }
+    })
+      const roomData={
+        fromUser: getUser(room[0]?.X),
+        toUser: getUser(room[0]?.Y),
+      }
+    io.to(room[0].roomName).emit('room-deatils',roomData)
+  })
 
   socket.on('disconnect', () => {
     console.log('a user disconnected!');
@@ -108,6 +120,14 @@ if(value == 'X'){
     }
   })
 }
+}
+
+getUser= (id) =>{
+  return users.filter((user)=>{
+    if(user.userId == id){
+      return user
+    }
+  })[0]
 }
 
 httpServer.listen(port, () => console.log(`listening on port ${port}`));
