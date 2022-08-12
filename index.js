@@ -97,7 +97,6 @@ io.on('connection', (socket) => {
     io.to(room[0].roomName).emit('room-deatils',roomData)
   })
   socket.on('chat', (data) => {
-    console.log(data)
     const user = getUser(socket.id)
     if(data.toUser.userId == '0'){
       data.fromUser = user 
